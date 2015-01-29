@@ -96,7 +96,7 @@ module BootstrapForm
     def check_box_with_bootstrap(name, options = {}, checked_value = "1", unchecked_value = "0", &block)
       options = options.symbolize_keys!
 
-      html = check_box_without_bootstrap(name, options.except(:label, :help, :inline), checked_value, unchecked_value)
+      html = check_box_without_bootstrap(name, options.except(:label, :help, :inline, :label_for), checked_value, unchecked_value)
       label_content = block_given? ? capture(&block) : options[:label]
       html.concat(" ").concat(label_content || (object && object.class.human_attribute_name(name)) || name.to_s.humanize)
 
@@ -107,7 +107,7 @@ module BootstrapForm
         label(label_name, html, class: "checkbox-inline")
       else
         content_tag(:div, class: "checkbox") do
-          label(label_name, html)
+          label(label_name, html, for: options[:label_for])
         end
       end
     end
@@ -155,33 +155,33 @@ module BootstrapForm
       collection_radio_buttons(*args)
     end
 
-    def form_group(*args, &block)
-      options = args.extract_options!
-      name = args.first
+		def form_group(*args, &block)
+			options = args.extract_options!
+			name = args.first
 
-      options[:class] = ["form-group", options[:class]].compact.join(' ')
-      options[:class] << " #{error_class}" if has_error?(name)
-      options[:class] << " #{feedback_class}" if options[:icon]
+			options[:class] = ["form-group", options[:class]].compact.join(' ')
+			options[:class] << " #{error_class}" if has_error?(name)
+			options[:class] << " #{feedback_class}" if options[:icon]
 
-      content_tag(:div, options.except(:id, :label, :help, :icon, :label_col, :control_col, :layout)) do
-        label   = generate_label(options[:id], name, options[:label], options[:label_col], options[:layout]) if options[:label]
-        control = capture(&block).to_s
-        control.concat(generate_help(name, options[:help]).to_s)
-        control.concat(generate_icon(options[:icon])) if options[:icon]
+			content_tag(:div, options.except(:id, :label, :help, :icon, :icon_prefix, :label_col, :control_col, :layout)) do
+				label = generate_label(options[:id], name, options[:label], options[:label_col], options[:layout]) if options[:label]
+				control = capture(&block).to_s
+				control.concat(generate_help(name, options[:help]).to_s)
+				control.concat(generate_icon(options[:icon], (options[:icon_prefix] || "glyphicon"))) if options[:icon]
 
-        if get_group_layout(options[:layout]) == :horizontal
-          control_class = (options[:control_col] || control_col.clone)
+				if get_group_layout(options[:layout]) == :horizontal
+					control_class = (options[:control_col] || control_col.clone)
 
-          unless options[:label]
-            control_offset = offset_col(/([0-9]+)$/.match(options[:label_col] || default_label_col))
-            control_class.concat(" #{control_offset}")
-          end
-          control = content_tag(:div, control, class: control_class)
-        end
+					unless options[:label]
+						control_offset = offset_col(/([0-9]+)$/.match(options[:label_col] || default_label_col))
+						control_class.concat(" #{control_offset}")
+					end
+					control = content_tag(:div, control, class: control_class)
+				end
 
-        concat(label).concat(control)
-      end
-    end
+				concat(label).concat(control)
+			end
+		end
 
     def fields_for_with_bootstrap(record_name, record_object = nil, fields_options = {}, &block)
       fields_options, record_object = record_object, nil if record_object.is_a?(Hash) && record_object.extractable_options?
@@ -243,48 +243,53 @@ module BootstrapForm
       object.respond_to?(:errors) && !(name.nil? || object.errors[name].empty?)
     end
 
-    def form_group_builder(method, options, html_options = nil)
-      options.symbolize_keys!
-      html_options.symbolize_keys! if html_options
+		def form_group_builder(method, options, html_options = nil)
+			options.symbolize_keys!
+			html_options.symbolize_keys! if html_options
 
-      # Add control_class; allow it to be overridden by :control_class option
-      css_options = html_options || options
-      control_classes = css_options.delete(:control_class) { control_class }
-      css_options[:class] = [control_classes, css_options[:class]].compact.join(" ")
+			# Add control_class; allow it to be overridden by :control_class option
+			css_options = html_options || options
+			control_classes = css_options.delete(:control_class) { control_class }
+			css_options[:class] = [control_classes, css_options[:class]].compact.join(" ")
 
-      options = convert_form_tag_options(method, options) if acts_like_form_tag
+			options = convert_form_tag_options(method, options) if acts_like_form_tag
 
-      label = options.delete(:label)
-      label_class = hide_class if options.delete(:hide_label)
-      wrapper_class = options.delete(:wrapper_class)
-      wrapper_options = options.delete(:wrapper)
-      help = options.delete(:help)
-      icon = options.delete(:icon)
-      label_col = options.delete(:label_col)
-      control_col = options.delete(:control_col)
-      layout = get_group_layout(options.delete(:layout))
-      form_group_options = {
-        id: options[:id],
-        label: {
-          text: label,
-          class: label_class
-        },
-        help: help,
-        icon: icon,
-        label_col: label_col,
-        control_col: control_col,
-        layout: layout,
-        class: wrapper_class
-      }
+			label = options.delete(:label)
+			label_class = hide_class if options.delete(:hide_label)
+			wrapper_class = options.delete(:wrapper_class)
+			wrapper_options = options.delete(:wrapper)
+			help = options.delete(:help)
+			icon = options.delete(:icon)
+			icon_prefix = options.delete(:icon_prefix)
+			label_col = options.delete(:label_col)
+			control_col = options.delete(:control_col)
+			layout = get_group_layout(options.delete(:layout))
+			form_group_options = {
+				id: options[:id],
+				help: help,
+				icon: icon,
+				icon_prefix: icon_prefix,
+				label_col: label_col,
+				control_col: control_col,
+				layout: layout,
+				class: wrapper_class
+			}
 
-      if wrapper_options.is_a?(Hash)
-        form_group_options.reverse_merge!(wrapper_options)
-      end
+			if wrapper_options.is_a?(Hash)
+				form_group_options.reverse_merge!(wrapper_options)
+			end
 
-      form_group(method, form_group_options) do
-        yield
-      end
-    end
+			unless options.delete(:skip_label)
+				form_group_options.reverse_merge!(label: {
+					text: label,
+					class: label_class
+				})
+			end
+
+			form_group(method, form_group_options) do
+				yield
+			end
+		end
 
     def convert_form_tag_options(method, options = {})
       options[:name] ||= method
@@ -309,9 +314,9 @@ module BootstrapForm
       content_tag(:span, help_text, class: 'help-block') if help_text.present?
     end
 
-    def generate_icon(icon)
-      content_tag(:span, "", class: "glyphicon glyphicon-#{icon} form-control-feedback")
-    end
+		def generate_icon(icon, prefix)
+			content_tag(:span, "", class: "#{prefix} #{prefix}-#{icon} form-control-feedback")
+		end
 
     def inputs_collection(name, collection, value, text, options = {}, &block)
       form_group_builder(name, options) do
